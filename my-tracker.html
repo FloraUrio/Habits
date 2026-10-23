@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>My Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Lora:wght@600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f3efe4;--fg:#171b1a;--card:#e9e3d2;--line:rgba(23,27,26,.15);--lamp:#b87a1f;--ok:#2f7d4f;--bad:#a4433a;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14181a;--fg:#f3efe4;--card:#1f2527;--line:rgba(243,239,228,.16);--lamp:#e9b25b;--ok:#6fcf97;--bad:#e08a80}}
+:root[data-theme="dark"]{--bg:#14181a;--fg:#f3efe4;--card:#1f2527;--line:rgba(243,239,228,.16);--lamp:#e9b25b;--ok:#6fcf97;--bad:#e08a80}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0 auto;max-width:620px;padding:22px 18px 70px;background:var(--bg);color:var(--fg);font:15px/1.5 'Inter',sans-serif}
+html{background:var(--bg)}
+h1,h2{font-family:'Lora',serif;margin:0}
+h1{font-size:1.45rem}h2{font-size:1.05rem;margin:22px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+.sub{opacity:.6;font-size:.82rem}
+nav{display:flex;gap:6px;margin:14px 0 6px}
+nav button{flex:1;padding:9px 4px;border:1px solid var(--line);background:none;color:var(--fg);border-radius:3px;font:500 .88rem 'Inter',sans-serif;cursor:pointer}
+nav button.on{background:var(--fg);color:var(--bg)}
+input,select,textarea{font:inherit;color:var(--fg);background:transparent;border:1px solid var(--line);border-radius:3px;padding:8px 10px;width:100%}
+select option{color:#171b1a}
+.row{display:flex;gap:6px;margin:6px 0}
+.btn{font:500 .85rem 'Inter',sans-serif;background:var(--fg);color:var(--bg);border:0;border-radius:3px;padding:9px 14px;cursor:pointer;white-space:nowrap}
+.btn.g{background:none;color:var(--fg);border:1px solid var(--line)}
+.btn.x{background:none;color:var(--bad);border:0;padding:4px 6px;font-size:.75rem;opacity:.7}
+.nudge{border-left:3px solid var(--lamp);padding:8px 12px;margin:6px 0;background:var(--card);border-radius:0 3px 3px 0;font-size:.88rem}
+.weekmsg{padding:12px;border:1px solid var(--lamp);border-radius:4px;margin:10px 0;font-size:.92rem}
+.item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.chk{width:26px;height:26px;border-radius:50%;border:2px solid var(--lamp);background:none;color:var(--bg);cursor:pointer;flex-shrink:0}
+.chk.on{background:var(--lamp)}
+.grow{flex:1}.st{color:var(--lamp);font-weight:600;font-size:.85rem}
+.bar{height:8px;background:var(--card);border-radius:4px;overflow:hidden;margin:5px 0}
+.bar i{display:block;height:100%;background:var(--ok)}
+.bar i.w{background:var(--lamp)}.bar i.o{background:var(--bad)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0}
+.stats div{background:var(--card);border-radius:4px;padding:10px}
+.stats b{display:block;font-size:1.02rem}
+.note{font-size:.84rem;padding:6px 0;border-bottom:1px solid var(--line)}
+.chip{display:inline-block;font-size:.76rem;border:1px solid var(--lamp);color:var(--lamp);border-radius:3px;padding:1px 7px;margin:2px 4px 2px 0}
+.bk{padding:12px 0;border-bottom:1px solid var(--line)}
+.lim{display:flex;align-items:center;gap:8px;font-size:.88rem;margin:8px 0}.lim label{width:84px}
+#toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:4px;font-size:.88rem;opacity:0;transition:opacity .25s;pointer-events:none;max-width:88%;text-align:center}
+#toast.on{opacity:1}
+.ok{color:var(--ok)}.bad{color:var(--bad)}.warn{color:var(--lamp)}
+</style>
+</head>
+<body>
+<h1>My Tracker</h1>
+<div class="sub" id="dt"></div>
+<nav id="nav"></nav>
+<main id="main"></main>
+<div id="toast"></div>
+<script>
+(function(){
+var K='myTrackerV1',D;
+try{D=JSON.parse(localStorage.getItem(K))}catch(e){}
+D=D||{};D.habits=D.habits||[];D.books=D.books||[];D.tx=D.tx||[];D.limits=D.limits||{};D.savings=D.savings||0;
+var tab='today';
+var CATS=['Food','Transport','Airtime','School','Business','Fun','Other'];
+function save(){try{localStorage.setItem(K,JSON.stringify(D))}catch(e){}}
+function ymd(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+function today(){return ymd(new Date())}
+function addDays(s,n){var d=new Date(s+'T00:00:00');d.setDate(d.getDate()+n);return ymd(d)}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function uid(){return Math.random().toString(36).slice(2,9)}
+function money(n){return Math.round(n).toLocaleString()+' TZS'}
+function $(s){return document.querySelector(s)}
+function v(id){var e=document.getElementById(id);return e?e.value.trim():''}
+function toast(m){var t=$('#toast');t.textContent=m;t.className='on';clearTimeout(toast.t);toast.t=setTimeout(function(){t.className=''},2600)}
+function streak(h){var s=0,d=today();if(h.days.indexOf(d)<0)d=addDays(d,-1);while(h.days.indexOf(d)>=0){s++;d=addDays(d,-1)}return s}
+var CHEER=['Well done. One more day on the board.','That’s the habit getting stronger.','Done. Future you says thanks.','Yes! Keep the streak alive.'];
+
+function nudges(){
+  var t=today(),o=[];
+  var open=D.habits.filter(function(h){return h.days.indexOf(t)<0}).length;
+  if(open)o.push(open+' habit'+(open>1?'s':'')+' still open today.');
+  if(D.books.length&&!D.books.some(function(b){return b.notes.some(function(n){return n.d===t})}))o.push('No chapter note today yet.');
+  if(!D.tx.some(function(x){return x.d===t}))o.push('You haven’t logged any money today.');
+  return o.map(function(m){return '<div class="nudge">'+m+'</div>'}).join('');
+}
+function weekMsg(){
+  if(!D.habits.length)return '';
+  var t=today(),done=0,tot=D.habits.length*7;
+  D.habits.forEach(function(h){for(var i=0;i<7;i++)if(h.days.indexOf(addDays(t,-i))>=0)done++});
+  var p=done/tot,m=p>=.8?'Marvellous week. You showed up almost every day.':p>=.4?'A decent week. You can do better, so pick one habit and protect it.':'Honest truth: this week was lazy. Start with one small habit today.';
+  return '<div class="weekmsg"><b>Last 7 days: '+done+' of '+tot+' check-ins.</b><br>'+m+'</div>';
+}
+function viewToday(){
+  var t=today();
+  var h=D.habits.map(function(x){var on=x.days.indexOf(t)>=0,s=streak(x);
+    return '<div class="item"><button class="chk'+(on?' on':'')+'" data-a="hab" data-id="'+x.id+'">'+(on?'✓':'')+'</button><div class="grow">'+esc(x.name)+'</div><span class="st">'+s+'-day streak</span><button class="btn x" data-a="delhab" data-id="'+x.id+'">remove</button></div>'}).join('')||'<div class="sub">No habits yet. Add one below, like “Read one chapter”.</div>';
+  return nudges()+weekMsg()+'<h2>Daily habits</h2>'+h+'<div class="row"><input id="hn" placeholder="New habit"><button class="btn" data-a="addhab">Add</button></div>';
+}
+function viewBooks(){
+  var t=today(),cut=addDays(t,-6),themes={};
+  var list=D.books.map(function(b){
+    var p=b.total?Math.min(100,Math.round(b.done/b.total*100)):0;
+    b.notes.forEach(function(n){if(n.theme&&n.d>=cut)themes[n.theme]=1});
+    var ns=b.notes.slice(-3).reverse().map(function(n){return '<div class="note"><b>Ch. '+n.ch+'</b> · '+esc(n.t)+(n.theme?' <span class="chip">'+esc(n.theme)+'</span>':'')+'</div>'}).join('');
+    return '<div class="bk"><div class="item" style="border:0;padding:0"><b class="grow">'+esc(b.title)+'</b><span class="sub">'+b.done+' / '+b.total+' chapters</span><button class="btn x" data-a="delbk" data-id="'+b.id+'">remove</button></div><div class="bar"><i style="width:'+p+'%"></i></div>'+
+    (b.done<b.total?'<textarea id="bt'+b.id+'" rows="2" placeholder="What stayed with you from this chapter?"></textarea><div class="row"><input id="bh'+b.id+'" placeholder="Theme (few words)"><button class="btn" data-a="chap" data-id="'+b.id+'">Finished a chapter</button></div>':'<div class="ok">Book finished. Well done.</div>')+ns+'</div>'}).join('')||'<div class="sub">Add your first book below.</div>';
+  var th=Object.keys(themes).map(function(x){return '<span class="chip">'+esc(x)+'</span>'}).join('')||'<span class="sub">Tag a theme with each chapter and it appears here.</span>';
+  return '<h2>Themes this week</h2>'+th+'<h2>Books</h2>'+list+'<h2>Add a book</h2><div class="row"><input id="bn" placeholder="Title"><input id="bc" type="number" min="1" placeholder="Chapters" style="width:100px"><button class="btn" data-a="addbk">Add</button></div>';
+}
+function viewMoney(){
+  var m=today().slice(0,7),inc=0,sp=0,by={};
+  D.tx.forEach(function(x){if(x.d.slice(0,7)!==m)return;if(x.type==='in')inc+=x.amt;else{sp+=x.amt;by[x.cat]=(by[x.cat]||0)+x.amt}});
+  var left=inc-sp-D.savings;
+  var lims=CATS.map(function(c){var l=D.limits[c]||0,s=by[c]||0,p=l?s/l*100:0,cls=p>100?'o':p>=80?'w':'',msg=!l?'':p>100?'<span class="bad">Over limit by '+money(s-l)+'</span>':p>=80?'<span class="warn">80% used. Slow down.</span>':'<span class="ok">'+money(l-s)+' left</span>';
+    return '<div class="lim"><label>'+c+'</label><input type="number" data-l="'+c+'" value="'+(l||'')+'" placeholder="limit"><span class="sub" style="width:92px;text-align:right">'+money(s)+'</span></div>'+(l?'<div class="bar"><i class="'+cls+'" style="width:'+Math.min(100,p)+'%"></i></div><div style="font-size:.8rem;margin-top:-2px">'+msg+'</div>':'')}).join('');
+  var recent=D.tx.slice(-8).reverse().map(function(x){return '<div class="item"><div class="grow">'+(x.type==='in'?'<span class="ok">+ ':'− ')+money(x.amt)+(x.type==='in'?'</span>':'')+' · '+esc(x.cat)+(x.note?' · '+esc(x.note):'')+'<div class="sub">'+x.d+'</div></div><button class="btn x" data-a="deltx" data-id="'+x.id+'">remove</button></div>'}).join('')||'<div class="sub">Nothing logged yet.</div>';
+  return '<div class="stats"><div><span class="sub">Income</span><b>'+money(inc)+'</b></div><div><span class="sub">Spent</span><b>'+money(sp)+'</b></div><div><span class="sub">Left after savings</span><b class="'+(left<0?'bad':'ok')+'">'+money(left)+'</b></div></div>'+
+  '<h2>Log money</h2><div class="row"><select id="mt"><option value="out">Expense</option><option value="in">Income</option></select><select id="mc">'+CATS.map(function(c){return '<option>'+c+'</option>'}).join('')+'</select></div><div class="row"><input id="ma" type="number" placeholder="Amount (TZS)"><input id="mn" placeholder="Note"><button class="btn" data-a="addtx">Add</button></div>'+
+  '<h2>Monthly savings target</h2><div class="lim"><label>Save first</label><input type="number" id="sv" value="'+(D.savings||'')+'" placeholder="Amount to set aside"></div>'+
+  '<h2>Category limits</h2><div class="sub">Set a limit for each category. A warning appears at 80%.</div>'+lims+'<h2>Recent</h2>'+recent;
+}
+function render(){
+  $('#dt').textContent=new Date().toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'});
+  $('#nav').innerHTML=[['today','Today'],['books','Books'],['money','Money']].map(function(x){return '<button data-a="tab" data-id="'+x[0]+'" class="'+(tab===x[0]?'on':'')+'">'+x[1]+'</button>'}).join('');
+  $('#main').innerHTML=tab==='today'?viewToday():tab==='books'?viewBooks():viewMoney();
+}
+document.addEventListener('click',function(e){
+  var b=e.target.closest('[data-a]');if(!b)return;var a=b.dataset.a,id=b.dataset.id,t=today();
+  if(a==='tab'){tab=id}
+  else if(a==='addhab'){var n=v('hn');if(!n)return;D.habits.push({id:uid(),name:n,days:[]})}
+  else if(a==='hab'){var h=D.habits.filter(function(x){return x.id===id})[0],i=h.days.indexOf(t);if(i>=0)h.days.splice(i,1);else{h.days.push(t);toast(CHEER[Math.floor(Math.random()*CHEER.length)])}}
+  else if(a==='delhab'){D.habits=D.habits.filter(function(x){return x.id!==id})}
+  else if(a==='addbk'){var n2=v('bn'),c=parseInt(v('bc'),10);if(!n2||!c)return;D.books.push({id:uid(),title:n2,total:c,done:0,notes:[]})}
+  else if(a==='chap'){var bk=D.books.filter(function(x){return x.id===id})[0],tx=v('bt'+id);if(!tx){toast('Write one line about the chapter first.');return}bk.done++;bk.notes.push({d:t,ch:bk.done,t:tx,theme:v('bh'+id)});toast('Chapter '+bk.done+' done. Keep going!')}
+  else if(a==='delbk'){D.books=D.books.filter(function(x){return x.id!==id})}
+  else if(a==='addtx'){var amt=parseFloat(v('ma'));if(!amt||amt<=0)return;D.tx.push({id:uid(),d:t,type:v('mt'),cat:v('mc'),amt:amt,note:v('mn')});toast('Logged.')}
+  else if(a==='deltx'){D.tx=D.tx.filter(function(x){return x.id!==id})}
+  save();render();
+});
+document.addEventListener('change',function(e){
+  var el=e.target;
+  if(el.dataset&&el.dataset.l){D.limits[el.dataset.l]=parseFloat(el.value)||0;save();render()}
+  else if(el.id==='sv'){D.savings=parseFloat(el.value)||0;save();render()}
+});
+render();
+})();
+</script>
+</body>
+</html>
